@@ -100,7 +100,7 @@ def load_data():
         root = data['root']
         crawl_cursor = data['crawl_cursor']
         update_cursor = data['update_cursor']
-        print('successfully laoded data')
+        print('successfully loaded data')
         return True
     except:
         print("loading data failed")
