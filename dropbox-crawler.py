@@ -7,7 +7,7 @@ from dropbox.files import FileMetadata, FolderMetadata
 db_token = '' # insert own db token here
 db_path = '' # for dropbox root use ''. Otherwise prepend a '/'
 
-log = logging.getLogger() # get root Logger
+log = logging.getLogger('crawler')
 console = logging.StreamHandler()
 
 finished = Event()
@@ -111,7 +111,7 @@ def load_data():
     return False
 
 def save_data():
-    print('new data')
+    log.debug('new data')
     was_finished = finished.is_set()
     finished.clear() # don't kill the process during saving data!
     try:
@@ -124,8 +124,16 @@ def save_data():
     if was_finished:
         finished.set()
 
+def init_logging():
+    formatter = logging.Formatter('%(asctime)s.%(msecs)03d %(threadName)s: '
+                                  '[%(name)s] %(message)s', datefmt="%Y-%m-%d %H:%M:%S")
+    handler = logging.StreamHandler()
+    handler.setFormatter(formatter)
+    log.addHandler(handler)
+    log.setLevel(logging.DEBUG)
 
 if __name__ == '__main__':
+    init_logging()
     print('connecting to dropbox')
     global dbx, original_sigint
     dbx = dropbox.Dropbox(db_token)
