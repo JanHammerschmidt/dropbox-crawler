@@ -29,7 +29,7 @@ def exit_handler(signum, frame):
 
 def update_tree(data):
     for e in data.entries:
-        path_components = e.path_lower[1:].split('/')
+        path_components = e.path_display[1:].split('/')
         folder = root
         for f in path_components[:-1]:
             try:
