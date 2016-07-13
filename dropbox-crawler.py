@@ -47,8 +47,16 @@ def update_tree(data):
     return data.cursor
 
 def crawl():
+    global space_used, space_allocated
+
+    log.info('get space usage..')
+    data = dbx.users_get_space_usage()
+    space_used = data.used
+    space_allocated = data.allocation.get_individual().allocated
+
     global crawl_cursor, finished_crawling
     if not finished_crawling:
+        log.info('start crawling..')
         if crawl_cursor == None:
             data = dbx.files_list_folder(db_path, recursive=True)
             crawl_cursor = update_tree(data)
@@ -104,7 +112,7 @@ def msgpack_unpack(code, data):
     raise RuntimeError('unknown msgpack extension type %i', code)
 
 def load_data():
-    global root, crawl_cursor, update_cursor, finished_crawling
+    global root, crawl_cursor, update_cursor, finished_crawling, space_used, space_allocated
     try:
         with open('data.msgpack', 'rb') as f:
             data = msgpack.unpack(f, encoding='utf-8', ext_hook=msgpack_unpack)
@@ -112,6 +120,8 @@ def load_data():
         crawl_cursor = data['crawl_cursor']
         update_cursor = data['update_cursor']
         finished_crawling = data['finished_crawling']
+        space_used = data['space_used']
+        space_allocated = data['space_allocated']
         log.info('successfully loaded data')
         return True
     except:
@@ -134,7 +144,9 @@ def save_data():
         'root': root,
         'crawl_cursor': crawl_cursor,
         'update_cursor': update_cursor,
-        'finished_crawling': finished_crawling
+        'finished_crawling': finished_crawling,
+        'space_used': space_used,
+        'space_allocated': space_allocated
     }
     with open('data.msgpack', 'wb') as f:
         msgpack.pack(data, f, default=lambda o: o.msgpack_pack())
@@ -162,7 +174,6 @@ if __name__ == '__main__':
         sys.exit("ERROR: Invalid access token; try re-generating an access token from the app console on the web.")
 
     load_data()
-    log.info("start crawling..")
     Thread(target=crawl).start()
 
     #print('polling for updates..')
