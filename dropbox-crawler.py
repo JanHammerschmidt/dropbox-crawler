@@ -42,8 +42,13 @@ def update_tree(data):
         f = path_components[-1]
         if isinstance(e, FileMetadata):
             folder.files[f] = File(f, e.size)
-        else:
+        elif isinstance(e, FolderMetadata):
             folder.folders[f] = Folder(f)
+        else: #DeletedMetadata
+            if f in folder.files:
+                del folder.files[f]
+            if f in folder.folders:
+                del folder.folders[f]
     return data.cursor
 
 def crawl():
@@ -70,13 +75,17 @@ def crawl():
                 finished_crawling = True
                 save_data()
                 break
+
+    log.info('poll for changes..')
+    global update_cursor
     while not stop_request:
-        data = dbx.files_list_folder_continue(crawl_cursor)
-        crawl_cursor = update_tree(data)
-        save_data()
-        if not data.has_more:
-            print('no further data')
+        changes = dbx.files_list_folder_longpoll(update_cursor) # todo: backoff in data?
+        if stop_request:
             break
+        if changes.changes:
+            data = dbx.files_list_folder_continue(update_cursor)
+            update_cursor = update_tree(data)
+            save_data()
 
     finished.set()
 
