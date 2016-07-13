@@ -15,12 +15,12 @@ stop_request = False
 
 def exit_handler(signum, frame):
     global stop_request
-    print("waiting for crawler thread to finish")
+    log.warn("waiting for crawler thread to finish")
     stop_request = True
     signal.signal(signal.SIGINT, original_sigint)
     try:
         if not finished.wait(60):
-            print('thread timed out! data may be lost')
+            log.error('thread timed out! data may be lost')
             sys.exit(1)
     except KeyboardInterrupt:
         print('exiting anyway? (data may be lost!)')
@@ -100,13 +100,13 @@ def load_data():
         root = data['root']
         crawl_cursor = data['crawl_cursor']
         update_cursor = data['update_cursor']
-        print('successfully loaded data')
+        log.info('successfully loaded data')
         return True
     except:
-        print("loading data failed")
+        log.info("loading data failed")
         root = Folder('root')
         crawl_cursor = None
-        print("getting update cursor")
+        log.debug("getting update cursor")
         update_cursor = dbx.files_list_folder_get_latest_cursor(db_path, recursive=True, include_deleted=True).cursor
     return False
 
@@ -134,7 +134,7 @@ def init_logging():
 
 if __name__ == '__main__':
     init_logging()
-    print('connecting to dropbox')
+    log.info('connecting to dropbox')
     global dbx, original_sigint
     dbx = dropbox.Dropbox(db_token)
 
@@ -145,7 +145,7 @@ if __name__ == '__main__':
         sys.exit("ERROR: Invalid access token; try re-generating an access token from the app console on the web.")
 
     load_data()
-    print("start crawling..")
+    log.info("start crawling..")
     Thread(target=crawl).start()
 
     #print('polling for updates..')
