@@ -12,6 +12,7 @@ console = logging.StreamHandler()
 
 finished = Event()
 stop_request = False
+finished_crawling = False
 
 def exit_handler(signum, frame):
     global stop_request
@@ -46,11 +47,21 @@ def update_tree(data):
     return data.cursor
 
 def crawl():
-    global crawl_cursor
-    if crawl_cursor == None:
-        data = dbx.files_list_folder(db_path, recursive=True)
-        crawl_cursor = update_tree(data)
-        save_data()
+    global crawl_cursor, finished_crawling
+    if not finished_crawling:
+        if crawl_cursor == None:
+            data = dbx.files_list_folder(db_path, recursive=True)
+            crawl_cursor = update_tree(data)
+            save_data()
+        while not stop_request:
+            data = dbx.files_list_folder_continue(crawl_cursor)
+            crawl_cursor = update_tree(data)
+            save_data()
+            if not data.has_more:
+                log.info('no further data')
+                finished_crawling = True
+                save_data()
+                break
     while not stop_request:
         data = dbx.files_list_folder_continue(crawl_cursor)
         crawl_cursor = update_tree(data)
@@ -93,13 +104,14 @@ def msgpack_unpack(code, data):
     raise RuntimeError('unknown msgpack extension type %i', code)
 
 def load_data():
-    global root, crawl_cursor, update_cursor
+    global root, crawl_cursor, update_cursor, finished_crawling
     try:
         with open('data.msgpack', 'rb') as f:
             data = msgpack.unpack(f, encoding='utf-8', ext_hook=msgpack_unpack)
         root = data['root']
         crawl_cursor = data['crawl_cursor']
         update_cursor = data['update_cursor']
+        finished_crawling = data['finished_crawling']
         log.info('successfully loaded data')
         return True
     except:
@@ -118,7 +130,12 @@ def save_data():
         shutil.move('data.msgpack', 'data.prev.msgpack')
     except:
         pass
-    data = {'root': root, 'crawl_cursor': crawl_cursor, 'update_cursor': update_cursor}
+    data = {
+        'root': root,
+        'crawl_cursor': crawl_cursor,
+        'update_cursor': update_cursor,
+        'finished_crawling': finished_crawling
+    }
     with open('data.msgpack', 'wb') as f:
         msgpack.pack(data, f, default=lambda o: o.msgpack_pack())
     if was_finished:
