@@ -13,6 +13,7 @@ console = logging.StreamHandler()
 finished = Event()
 stop_request = False
 finished_crawling = False
+data_file = 'data.msgpack'
 
 def exit_handler(signum, frame):
     global stop_request
@@ -123,7 +124,7 @@ def msgpack_unpack(code, data):
 def load_data():
     global root, crawl_cursor, update_cursor, finished_crawling, space_used, space_allocated
     try:
-        with open('data.msgpack', 'rb') as f:
+        with open(data_file, 'rb') as f:
             data = msgpack.unpack(f, encoding='utf-8', ext_hook=msgpack_unpack)
         root = data['root']
         crawl_cursor = data['crawl_cursor']
@@ -146,7 +147,7 @@ def save_data():
     was_finished = finished.is_set()
     finished.clear() # don't kill the process during saving data!
     try:
-        shutil.move('data.msgpack', 'data.prev.msgpack')
+        shutil.move(data_file, 'data.prev.msgpack')
     except:
         pass
     data = {
@@ -157,7 +158,7 @@ def save_data():
         'space_used': space_used,
         'space_allocated': space_allocated
     }
-    with open('data.msgpack', 'wb') as f:
+    with open(data_file, 'wb') as f:
         msgpack.pack(data, f, default=lambda o: o.msgpack_pack())
     if was_finished:
         finished.set()
