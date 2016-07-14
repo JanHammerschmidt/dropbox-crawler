@@ -30,6 +30,7 @@ def exit_handler(signum, frame):
     sys.exit(0)
 
 def update_tree(data):
+    log.debug('new data (%i entries)' % len(data.entries))
     for e in data.entries:
         path_components = e.path_display[1:].split('/')
         folder = root
@@ -143,7 +144,7 @@ def load_data():
     return False
 
 def save_data():
-    log.debug('new data')
+    log.debug('save data to %s' % data_file)
     was_finished = finished.is_set()
     finished.clear() # don't kill the process during saving data!
     try:
