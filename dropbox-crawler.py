@@ -143,7 +143,7 @@ def load_data():
     except:
         log.info("loading data failed")
         root = Folder('root')
-        crawl_cursor = None
+        crawl_cursor, finished_crawling = None, False
         log.debug("getting update cursor")
         update_cursor = dbx.files_list_folder_get_latest_cursor(db_path, recursive=True, include_deleted=True).cursor
     return False
