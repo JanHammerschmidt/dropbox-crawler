@@ -93,6 +93,7 @@ def crawl():
             if (datetime.now() - last_save).total_seconds() > save_interval:
                 save_data()
 
+    save_data()
     finished.set()
 
 class File:
