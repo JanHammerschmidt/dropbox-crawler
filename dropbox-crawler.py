@@ -1,5 +1,6 @@
 import sys, os, shutil, signal, logging
 import dropbox, msgpack
+from datetime import datetime
 from threading import Thread, Event
 from dropbox.exceptions import ApiError, AuthError
 from dropbox.files import FileMetadata, FolderMetadata
@@ -14,6 +15,8 @@ finished = Event()
 stop_request = False
 finished_crawling = False
 data_file = 'data.msgpack'
+last_save = datetime.now()
+save_interval = 120 # periodically save every n seconds
 
 def exit_handler(signum, frame):
     global stop_request
@@ -87,7 +90,8 @@ def crawl():
         if changes.changes:
             data = dbx.files_list_folder_continue(update_cursor)
             update_cursor = update_tree(data)
-            save_data()
+            if (datetime.now() - last_save).total_seconds() > save_interval:
+                save_data()
 
     finished.set()
 
@@ -123,7 +127,7 @@ def msgpack_unpack(code, data):
     raise RuntimeError('unknown msgpack extension type %i', code)
 
 def load_data():
-    global root, crawl_cursor, update_cursor, finished_crawling, space_used, space_allocated
+    global root, crawl_cursor, update_cursor, finished_crawling, space_used, space_allocated, last_save
     try:
         with open(data_file, 'rb') as f:
             data = msgpack.unpack(f, encoding='utf-8', ext_hook=msgpack_unpack)
@@ -133,6 +137,7 @@ def load_data():
         finished_crawling = data['finished_crawling']
         space_used = data['space_used']
         space_allocated = data['space_allocated']
+        last_save = datetime.fromtimestamp(data['last_save'])
         log.info('successfully loaded data')
         return True
     except:
@@ -144,6 +149,7 @@ def load_data():
     return False
 
 def save_data():
+    global last_save
     log.debug('save data to %s' % data_file)
     was_finished = finished.is_set()
     finished.clear() # don't kill the process during saving data!
@@ -151,13 +157,15 @@ def save_data():
         shutil.move(data_file, 'data.prev.msgpack')
     except:
         pass
+    last_save = datetime.now()
     data = {
         'root': root,
         'crawl_cursor': crawl_cursor,
         'update_cursor': update_cursor,
         'finished_crawling': finished_crawling,
         'space_used': space_used,
-        'space_allocated': space_allocated
+        'space_allocated': space_allocated,
+        'last_save': last_save.timestamp()
     }
     with open(data_file, 'wb') as f:
         msgpack.pack(data, f, default=lambda o: o.msgpack_pack())
