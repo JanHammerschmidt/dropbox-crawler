@@ -70,11 +70,9 @@ def crawl():
         if crawl_cursor == None:
             data = dbx.files_list_folder(db_path, recursive=True)
             crawl_cursor = update_tree(data)
-            save_data()
         while not stop_request:
             data = dbx.files_list_folder_continue(crawl_cursor)
             crawl_cursor = update_tree(data)
-            save_data()
             if not data.has_more:
                 log.info('no further data')
                 finished_crawling = True
