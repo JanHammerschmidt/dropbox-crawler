@@ -17,6 +17,8 @@ finished_crawling = False
 data_file = 'data.msgpack'
 last_save = datetime.now()
 save_interval = 120 # periodically save every n seconds
+save_interval_entries = 500 # save when n items have been updated
+updated_entries = 0 # count how many entries have been updated
 
 def exit_handler(signum, frame):
     global stop_request
@@ -33,7 +35,9 @@ def exit_handler(signum, frame):
     sys.exit(0)
 
 def update_tree(data):
+    global updated_entries
     log.debug('new data (%i entries)' % len(data.entries))
+    updated_entries += len(data.entries)
     for e in data.entries:
         path_components = e.path_display[1:].split('/')
         folder = root
@@ -88,7 +92,7 @@ def crawl():
         if changes.changes:
             data = dbx.files_list_folder_continue(update_cursor)
             update_cursor = update_tree(data)
-        if (datetime.now() - last_save).total_seconds() > save_interval:
+        if (datetime.now() - last_save).total_seconds() > save_interval or updated_entries >= save_interval_entries:
             save_data()
 
     save_data()
@@ -148,7 +152,7 @@ def load_data():
     return False
 
 def save_data():
-    global last_save
+    global last_save, updated_entries
     log.debug('save data to %s' % data_file)
     was_finished = finished.is_set()
     finished.clear() # don't kill the process during saving data!
@@ -168,6 +172,7 @@ def save_data():
     }
     with open(data_file, 'wb') as f:
         msgpack.pack(data, f, default=lambda o: o.msgpack_pack())
+    updated_entries = 0
     if was_finished:
         finished.set()
 
