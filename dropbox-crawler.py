@@ -88,8 +88,8 @@ def crawl():
         if changes.changes:
             data = dbx.files_list_folder_continue(update_cursor)
             update_cursor = update_tree(data)
-            if (datetime.now() - last_save).total_seconds() > save_interval:
-                save_data()
+        if (datetime.now() - last_save).total_seconds() > save_interval:
+            save_data()
 
     save_data()
     finished.set()
